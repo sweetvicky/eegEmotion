@@ -18,7 +18,7 @@ def savedatasets(dirname,dataname,labelname,eegchanel,eegnum,trigernum):
 	for filename in files:
 		filenametmp = dirname + '/' + filename
 		datatmp = pickle.load(open(filenametmp, 'rb'),encoding='iso-8859-1')
-		# datas[dnum:dnum+subdrows,:] = datatmp['data'][:,:eegchanel,-eegnum:].reshape((-1,eegnum))
+		datas[dnum:dnum+subdrows,:] = datatmp['data'][:,:eegchanel,-eegnum:].reshape((-1,eegnum))
 		labels[lnum:lnum+trigernum,:] = datatmp['labels'] 
 		dnum += subdrows
 		lnum += trigernum

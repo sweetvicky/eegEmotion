@@ -1,16 +1,20 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import butter, lfilter
+from sklearn.model_selection import train_test_split
+
+import pyeeg
+
+fs = 128
+tonums = 40 
+
 
 def loaddata(dataname,labelname):
-	data = np.loadtxt(open("datas.csv","rb"), delimiter=",", skiprows=0)
-	label = np.loadtxt(open("labels.csv","rb"), delimiter=",", skiprows=0)
+	data = np.loadtxt(open(dataname,"rb"), delimiter=",", skiprows=0)
+	label = np.loadtxt(open(labelname,"rb"), delimiter=",", skiprows=0)
+	return data,label
 
-# def getfft(rowdata):
-# 	fftdata = map(lambda x: np.fft.fft(x),list(rowdata))
-# 	return fftdata
-
-def getfrequency(rowdata,fs):
+def getfrequency(rowdata):
 	# 每次输入一个样本的数据进来，共有32路信号
 
 	#all frequency signal
@@ -18,16 +22,14 @@ def getfrequency(rowdata,fs):
 	detal:1-4Hz,theta:4~8Hz,alpha:8~13Hz,beta:18~30Hz
 	"""
 	listdata = list(rowdata)
-	delta = np.arrary(list(map(lambda x: butterbandpassfilter(x, 1, 4, fs),listdata)))
-	theta = np.arrary(list(map(lambda x: butterbandpassfilter(x, 4, 8, fs),listdata)))
-	alpha = np.arrary(list(map(lambda x: butterbandpassfilter(x, 8, 13, fs),listdata)))
-	beta = np.arrary(list(map(lambda x: butterbandpassfilter(x, 18, 30, fs),listdata)))
+	delta = np.reshape(np.array(list(map(lambda x: butterbandpassfilter(x, 1, 4, fs),listdata))),(tonums,-1,data.shape[1]))
+	theta = np.reshape(np.array(list(map(lambda x: butterbandpassfilter(x, 4, 8, fs),listdata))),(tonums,-1,data.shape[1]))
+	alpha = np.reshape(np.array(list(map(lambda x: butterbandpassfilter(x, 8, 13, fs),listdata))),(tonums,-1,data.shape[1]))
+	beta = np.reshape(np.array(list(map(lambda x: butterbandpassfilter(x, 18, 30, fs),listdata))),(tonums,-1,data.shape[1]))
 
-	print(delta.shape)
+	return delta,theta,alpha,beta
 
 
-def getfeature(delta,theta,alpha,beta):
-	return delta
 
 def butterbandpass(lowcut, highcut, fs, order=5):
     nyq = 0.5 * fs
@@ -38,59 +40,63 @@ def butterbandpass(lowcut, highcut, fs, order=5):
 
 
 def butterbandpassfilter(data, lowcut, highcut, fs, order=5):
-    b, a = butter_bandpass(lowcut, highcut, fs, order=order)
+    b, a = butterbandpass(lowcut, highcut, fs, order=order)
     y = lfilter(b, a, data)
     return y
 
-def testfrequency():
-	samplerate = 512
 
-	t = np.arange(0, 1.0, 1.0/samplerate)
-	x = np.sin(2*np.pi*156.25*t)  + 2*np.sin(2*np.pi*234.375*t)
-	x1 = butterbandpassfilter(x, 100, 200, samplerate)
-	x2 = butterbandpassfilter(x, 200, 250, samplerate)
 
-	fftx = abs(np.fft.rfft(x))
-	freqs = np.linspace(0, samplerate/2,len(fftx))
+def getonefeatures(data):
 
-	fftx1 = abs(np.fft.rfft(x1))
-	fftx2 = abs(np.fft.rfft(x2))
+	listdata = list(data)
+	# Std
+	fstd = np.array(list(map(lambda x: np.std(x),listdata)))
 
-	plt.figure(facecolor='w',figsize=(9,8))
-
-	plt.subplot(211)
-	plt.plot(freqs,fftx,'b-')
-	plt.title('Row Data FFT')
-	plt.grid()
-	plt.subplot(212)
-	plt.plot(t,x,'b-')
-	plt.title('Row Data')
-	plt.show()
-
-	plt.figure(facecolor='w',figsize=(9,8))
-	plt.subplot(211)
-	plt.plot(freqs,fftx1,'b-')
-	plt.title('Row Data FFT')
-	plt.grid()
-	plt.subplot(212)
-	plt.plot(t,x1,'b-')
-	plt.title('Row Data')
-	plt.grid()
-	plt.show()
-
-	plt.figure(facecolor='w',figsize=(9,8))
-	plt.subplot(211)
-	plt.plot(freqs,fftx2,'b-')
-	plt.title('Row Data FFT')
-	plt.grid()
-	plt.subplot(212)
-	plt.plot(t,x2,'b-')
-	plt.title('Row Data')
-	plt.grid()
-
-	plt.show()
-
+	# Approximate-Entropy(ApEN)
+	m = 3
+	r = 0.2*fstd
+	fae = np.array(list(map(lambda x,y: pyeeg.ap_entropy(x, m, y),listdata,list(r))))
 	
+	# Power
+	# fpower,fre = pyeeg.bin_power(data, [1,30], fs)
+	# print(fpower)
+	# print("特征--{std:%.4f,AE:%.4f,Power:%.4f}"%(fstd,fae,fpower))
+
+	# First-order Diff ???
+	# firstoderlist = pyeeg.first_order_diff(data)
+
+	# Hjorth
+	fhjormod_com = np.array(list(map(lambda x: pyeeg.hjorth(x),listdata)))
+	fhjor_act = np.array(list(map(lambda x: np.var(x),listdata)))
+
+	# Spectrum Entropy
+	# fse = pyeeg.spectral_entropy(data, [0,fs/2], fs)
+	# print(fse)
+
+	featurestmp = np.stack((fstd,fae,fhjormod_com[:,0],fhjormod_com[:,1],fhjor_act),axis=1)
+	temprow,tmpcol = featurestmp.shape
+	features = np.reshape(featurestmp, (temprow*tmpcol,))
+	return features
+
+def getfeatures(delta,theta,alpha,beta):
+
+    # features's column is setted by yourself
+	features = np.zeros((0,4*5*5))
+	# for r in range(delta.shape[0]):
+	for r in range(1):
+
+		tmpdelta = getonefeatures(delta[r,:5,:])
+		tmptheta = getonefeatures(theta[r,:5,:])
+		tmpalpha = getonefeatures(alpha[r,:5,:])
+		tmpbeta = getonefeatures(beta[r,:5,:])
+		tmpfeatures = np.reshape(np.stack((tmpdelta,tmptheta,tmpalpha,tmpbeta),axis=0),(features.shape[1],))
+		# tmpfeatures = np.stack((tmpdelta,tmptheta,tmpalpha,tmpbeta),axis=0)
+		features = np.row_stack((features,tmpfeatures))
+
+	return features
+
+def function():
+	pass
 	
 if __name__ == '__main__':
 	dataname = 'onedatas.csv'
@@ -98,5 +104,10 @@ if __name__ == '__main__':
 	fs = 128
 	# testfrequency()
 	data,label = loaddata(dataname, labelname)
-	getfrequency(data, fs)
+	delta,theta,alpha,beta = getfrequency(data)
+	print(delta.shape)
+	features = getfeatures(delta,theta,alpha,beta)
+    # x_train, x_test, y_train, y_test = train_test_split(x, y, train_size=0.8, random_state=1)
+
+
 

@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt 
 from mpl_toolkits.mplot3d import Axes3D
 
-def savedatasets(dirname,dataname,labelname,eegchanel,eegnum,trigernum):
+def savedatasets(dirname,dataname,labelname,eegchanel,eegnum,trigernum,chanindex):
 	files = os.listdir(dirname)
 	subdrows = eegchanel * trigernum
 	drows = len(files) * subdrows
@@ -18,7 +18,7 @@ def savedatasets(dirname,dataname,labelname,eegchanel,eegnum,trigernum):
 	for filename in files:
 		filenametmp = dirname + '/' + filename
 		datatmp = pickle.load(open(filenametmp, 'rb'),encoding='iso-8859-1')
-		datas[dnum:dnum+subdrows,:] = datatmp['data'][:,:eegchanel,-eegnum:].reshape((-1,eegnum))
+		datas[dnum:dnum+subdrows,:] = datatmp['data'][:,chanindex,-eegnum:].reshape((-1,eegnum))
 		labels[lnum:lnum+trigernum,:] = datatmp['labels'] 
 		dnum += subdrows
 		lnum += trigernum
@@ -65,18 +65,22 @@ def labelsmapping(labels):
 	return newlabels
 
 if __name__ == '__main__':
-	eegchanel = 32
+	chan = ['Fp1','AF3','F3','F7','FC5','FC1','C3','T7','CP5','CP1','P3','P7','PO3','O1','Oz','Pz','Fp2','AF4','Fz','F4','F8','FC6','FC2','Cz','C4','T8','CP6','CP2','P4','P8','PO4','O2']
+	newchan = ['Fp1','Fp2','F3','F4']
+	chanindex = list(map(lambda x: chan.index(x),newchan))
+	
+	eegchanel = len(newchan)
 	eegnum = 7680
 	trigernum = 40
 	rootdir = '..//data'
 	onerootdir = '..//onedata'
-	datas,labelss = savedatasets(onerootdir,'dataname','labelname',eegchanel,eegnum,trigernum)
+	datas,labelss = savedatasets(rootdir,'dataname','labelname',eegchanel,eegnum,trigernum,chanindex)
 	# plotVAemotion(labelss)
 	labels = labelsmapping(labelss)
 	# print(datas.shape)
 	# print(labels.shape)
-	np.savetxt("onedatas.csv", datas, delimiter=',')
-	np.savetxt("onelabels.csv", labels, delimiter=',')
+	np.savetxt("newdatas.csv", datas, delimiter=',')
+	np.savetxt("newlabels.csv", labels, delimiter=',')
 
 	# testdata = np.array([5.4,6,8,2])
 	# newlabels = np.array(list(map(lambda x: int(x >= 4.5)+int(x > 5.5)-1, list(testdata))))

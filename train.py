@@ -86,7 +86,7 @@ def getonefeatures(data):
 	features = np.reshape(featurestmp, (temprow*tmpcol,))
 	return features
 
-def getfeatures(delta,theta,alpha,beta):
+def getfeatures(delta,theta,alpha,beta, channelnums):
 
     # features's column is setted by yourself
     '''
@@ -94,7 +94,6 @@ def getfeatures(delta,theta,alpha,beta):
     channelnums:numember of channel ;
     featnums:numember of features ;
     '''
-    channelnums = 2
     featnums = 6
     features = np.zeros((0,frepnums*channelnums*featnums))
 
@@ -134,18 +133,20 @@ def svmclassier(datas,labels):
 	
 	
 if __name__ == '__main__':
+
 	dataname = '..//data/onedatas.csv'
 	labelname = '..//data/onelabels.csv'
 	fs = 128
 	# testfrequency()	
 	data,label = loaddata(dataname, labelname)
-	indexdata = []
-	for r in range(40):
-		indexdata = indexdata + list(range(r*32,r*32+2))
+	channelnums = 4
+	# for r in range(40):
+	# 	indexdata = indexdata + list(range(r*32,r*32+2))
 	# print(indexdata)
-	delta,theta,alpha,beta = getfrequency(data[indexdata])
+	delta,theta,alpha,beta = getfrequency(data)
 	# print(delta.shape)
-	features = getfeatures(delta,theta,alpha,beta)
+	features = getfeatures(delta,theta,alpha,beta,channelnums)
+	print(features.shape)
 	# print(features.shape)
 	svmclassier(features, label)
 

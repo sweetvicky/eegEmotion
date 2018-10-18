@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score
 import pyeeg
 
 fs = 128
-tonums = 40 
+tonums = 40
 frepnums = 4
 
 
@@ -18,7 +18,7 @@ def loaddata(dataname,labelname):
 	label = np.loadtxt(open(labelname,"rb"), delimiter=",", skiprows=0)
 	return data,label
 
-def getfrequency(rowdata):
+def getfrequency(rowdata,samplenums):
 	# 每次输入一个样本的数据进来，共有32路信号
 
 	#all frequency signal
@@ -26,10 +26,10 @@ def getfrequency(rowdata):
 	detal:1-4Hz,theta:4~8Hz,alpha:8~13Hz,beta:18~30Hz
 	"""
 	listdata = list(rowdata)
-	delta = np.reshape(np.array(list(map(lambda x: butterbandpassfilter(x, 1, 4, fs),listdata))),(tonums,-1,data.shape[1]))
-	theta = np.reshape(np.array(list(map(lambda x: butterbandpassfilter(x, 4, 8, fs),listdata))),(tonums,-1,data.shape[1]))
-	alpha = np.reshape(np.array(list(map(lambda x: butterbandpassfilter(x, 8, 13, fs),listdata))),(tonums,-1,data.shape[1]))
-	beta = np.reshape(np.array(list(map(lambda x: butterbandpassfilter(x, 18, 30, fs),listdata))),(tonums,-1,data.shape[1]))
+	delta = np.reshape(np.array(list(map(lambda x: butterbandpassfilter(x, 1, 4, fs),listdata))),(samplenums,-1,data.shape[1]))
+	theta = np.reshape(np.array(list(map(lambda x: butterbandpassfilter(x, 4, 8, fs),listdata))),(samplenums,-1,data.shape[1]))
+	alpha = np.reshape(np.array(list(map(lambda x: butterbandpassfilter(x, 8, 13, fs),listdata))),(samplenums,-1,data.shape[1]))
+	beta = np.reshape(np.array(list(map(lambda x: butterbandpassfilter(x, 18, 30, fs),listdata))),(samplenums,-1,data.shape[1]))
 
 	return delta,theta,alpha,beta
 
@@ -99,13 +99,14 @@ def getfeatures(delta,theta,alpha,beta, channelnums):
 
     for r in range(delta.shape[0]):
         # for r in range(1):
-        tmpdelta = getonefeatures(delta[r,:5,:])
-        tmptheta = getonefeatures(theta[r,:5,:])
-        tmpalpha = getonefeatures(alpha[r,:5,:])
-        tmpbeta = getonefeatures(beta[r,:5,:])
-        tmpfeatures = np.reshape(np.stack((tmpdelta,tmptheta,tmpalpha,tmpbeta),axis=0),(features.shape[1],))
+        tmpdelta = getonefeatures(delta[r])
+        tmptheta = getonefeatures(theta[r])
+        tmpalpha = getonefeatures(alpha[r])
+        tmpbeta = getonefeatures(beta[r])
+        tmpfeatures = np.reshape(np.stack((tmpdelta,tmptheta,tmpalpha,tmpbeta),axis=0),(1,-1))
         # tmpfeatures = np.stack((tmpdelta,tmptheta,tmpalpha,tmpbeta),axis=0)
         features = np.row_stack((features,tmpfeatures))
+        print('get features for %d samples：'%r)
 
     return features
 
@@ -128,27 +129,33 @@ def svmclassier(datas,labels):
     clf.score(x_test, y_test)
     test_acc = accuracy_score(y_test, clf.predict(x_test))
 
-    print("train accurate：%.2f",train_acc)
-    print("test accurate:%.2f",test_acc)
+    print("train accurate：%.2f"%train_acc)
+    print("test accurate:%.2f"%test_acc)
 	
 	
 if __name__ == '__main__':
 
-	dataname = '..//data/onedatas.csv'
-	labelname = '..//data/onelabels.csv'
+	dataname = '..//data/newdatas.csv'
+	labelname = '..//data/newlabels.csv'
 	fs = 128
 	# testfrequency()	
 	data,label = loaddata(dataname, labelname)
+	samplenums = len(label)
+	print('data.shape：',data.shape)
+	print('label.shape：',label.shape)
 	channelnums = 4
 	# for r in range(40):
 	# 	indexdata = indexdata + list(range(r*32,r*32+2))
 	# print(indexdata)
-	delta,theta,alpha,beta = getfrequency(data)
-	# print(delta.shape)
-	features = getfeatures(delta,theta,alpha,beta,channelnums)
-	print(features.shape)
-	# print(features.shape)
-	svmclassier(features, label)
 
+	delta,theta,alpha,beta = getfrequency(data,samplenums)
+	print(delta.shape,'\n')
+
+	features = getfeatures(delta,theta,alpha,beta,channelnums)
+	print('features.shape：',features.shape)
+
+
+	
+	svmclassier(features, label)
 
 

@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt 
 from mpl_toolkits.mplot3d import Axes3D
 
-def savedatasets(dirname,dataname,labelname,eegchanel,eegnum,trigernum,chanindex):
+def savedatasets(dirname,eegchanel,eegnum,trigernum,chanindex):
 	files = os.listdir(dirname)
 	subdrows = eegchanel * trigernum
 	drows = len(files) * subdrows
@@ -72,15 +72,15 @@ if __name__ == '__main__':
 	eegchanel = len(newchan)
 	eegnum = 7680
 	trigernum = 40
-	rootdir = '..//data'
-	onerootdir = '..//onedata'
-	datas,labelss = savedatasets(rootdir,'dataname','labelname',eegchanel,eegnum,trigernum,chanindex)
+	rootdir = '..//datasets'
+	onerootdir = '..//onedatasets'
+	datas,labelss = savedatasets(onerootdir,eegchanel,eegnum,trigernum,chanindex)
 	# plotVAemotion(labelss)
 	labels = labelsmapping(labelss)
 	# print(datas.shape)
 	# print(labels.shape)
-	np.savetxt("newdatas.csv", datas, delimiter=',')
-	np.savetxt("newlabels.csv", labels, delimiter=',')
+	np.savetxt("..//data/newdatas.csv", datas, delimiter=',')
+	np.savetxt("..//data/newlabels.csv", labels, delimiter=',')
 
 	# testdata = np.array([5.4,6,8,2])
 	# newlabels = np.array(list(map(lambda x: int(x >= 4.5)+int(x > 5.5)-1, list(testdata))))
